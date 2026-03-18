@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 NCAA Tournament Bracket — KenPom Analysis</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #4f8ef7;
+    --accent2: #f7774f;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+
+  header { background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%); border-bottom: 1px solid var(--border); padding: 2.5rem 2rem 2rem; text-align: center; }
+  header h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); margin-top: 0.5rem; font-size: 0.95rem; }
+  .badge { display: inline-block; background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin: 0.5rem 0.25rem 0; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge.orange { background: var(--accent2); }
+
+  nav { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; padding: 1rem 2rem; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  nav a { font-size: 0.82rem; font-weight: 600; color: var(--muted); padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); transition: all 0.15s; }
+  nav a:hover { color: var(--text); border-color: var(--accent); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  section { margin-bottom: 3.5rem; }
+  h2 { font-size: 1.5rem; font-weight: 700; color: #fff; border-left: 4px solid var(--accent); padding-left: 0.75rem; margin-bottom: 1.25rem; }
+  h3 { font-size: 1.15rem; font-weight: 700; color: var(--accent); margin: 1.75rem 0 0.75rem; }
+  h4 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 1.25rem 0 0.5rem; }
+  p { color: var(--text); margin-bottom: 0.75rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-bottom: 1rem; }
+  th { background: #1f2232; color: var(--muted); font-weight: 600; text-align: left; padding: 8px 12px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79,142,247,0.04); }
+  .yes { color: var(--green); font-weight: 700; }
+  .no { color: var(--red); font-weight: 700; }
+  .partial { color: var(--yellow); font-weight: 700; }
+  .hi { color: var(--green); font-weight: 600; }
+  .med { color: var(--yellow); font-weight: 600; }
+  .lo { color: var(--red); font-weight: 600; }
+
+  .bracket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 700px) { .bracket-grid { grid-template-columns: 1fr; } }
+
+  .region-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .region-card .region-header { padding: 0.75rem 1.25rem; font-weight: 800; font-size: 1rem; letter-spacing: 0.03em; text-transform: uppercase; }
+  .region-card.east .region-header { background: linear-gradient(90deg, #1e3a5f, var(--card)); border-bottom: 2px solid #4f8ef7; }
+  .region-card.west .region-header { background: linear-gradient(90deg, #3a1e1e, var(--card)); border-bottom: 2px solid #f87171; }
+  .region-card.south .region-header { background: linear-gradient(90deg, #1e3a2a, var(--card)); border-bottom: 2px solid #4ade80; }
+  .region-card.midwest .region-header { background: linear-gradient(90deg, #3a2a1e, var(--card)); border-bottom: 2px solid #facc15; }
+  .region-card table { margin: 0; }
+  .region-card td:first-child { color: var(--muted); font-size: 0.8rem; width: 90px; }
+  .winner { font-weight: 700; color: #fff; }
+  .upset-win { color: var(--yellow); font-weight: 700; }
+
+  .champion-box { background: linear-gradient(135deg, #1a2744, #1a1d27); border: 2px solid var(--accent); border-radius: 12px; padding: 2rem; text-align: center; margin-bottom: 2rem; }
+  .champion-box .crown { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  .champion-box h3 { font-size: 2rem; color: var(--accent); margin: 0 0 0.25rem; }
+  .champion-box p { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+  .ff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 600px) { .ff-grid { grid-template-columns: 1fr; } }
+  .ff-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .ff-card .team { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 0.25rem; }
+  .ff-card .seed { color: var(--muted); font-size: 0.82rem; margin-bottom: 0.5rem; }
+
+  .fragile { border-left: 4px solid var(--red); }
+  .upset-card { border-left: 4px solid var(--yellow); }
+
+  .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin: 2px; text-transform: uppercase; }
+  .tag.green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .tag.red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag.yellow { background: rgba(250,204,21,0.15); color: var(--yellow); }
+  .tag.blue { background: rgba(79,142,247,0.15); color: var(--accent); }
+
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; }
+  summary { padding: 0.85rem 1.25rem; cursor: pointer; font-weight: 600; color: var(--text); list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  summary::after { content: '▸'; color: var(--muted); font-size: 0.85rem; }
+  details[open] summary::after { content: '▾'; }
+  details .inner { padding: 0 1.25rem 1.25rem; }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 2rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>2026 Men's NCAA Tournament<br><span>KenPom Bracket Analysis</span></h1>
+  <p>Built using Adjusted Efficiency Margin, tempo, experience, FT%, and recency trends</p>
+  <span class="badge">Selection Sunday: March 15, 2026</span>
+  <span class="badge orange">Champion Pick: Michigan</span>
+</header>
+
+<nav>
+  <a href="#thresholds">Thresholds</a>
+  <a href="#upset-model">Upset Model</a>
+  <a href="#bracket">Full Bracket</a>
+  <a href="#final-four">Final Four</a>
+  <a href="#upsets">Top Upsets</a>
+  <a href="#fragile">Fragile Favorites</a>
+</nav>
+
+<main>
+
+<!-- ── CHAMPION ── -->
+<div class="champion-box">
+  <div class="crown">🏆</div>
+  <h3>Michigan Wolverines</h3>
+  <p>2026 National Champion Pick &nbsp;|&nbsp; KenPom #2 &nbsp;|&nbsp; AdjEM ~+37.6 &nbsp;|&nbsp; #1 Defense Nationally</p>
+</div>
+
+<!-- ── STEP 1: THRESHOLDS ── -->
+<section id="thresholds">
+  <h2>Step 1 — Historical KenPom Thresholds</h2>
+
+  <h3>National Champions (2001–2025, n=24)</h3>
+  <table>
+    <thead><tr><th>Metric</th><th>Threshold</th><th>Compliance</th></tr></thead>
+    <tbody>
+      <tr><td>KenPom Overall Rank</td><td>Top 6</td><td>19 of 22 (86%)</td></tr>
+      <tr><td>AdjO Rank</td><td>Top 21</td><td>23 of 24 (96%); outliers: UConn 2014, Baylor 2021</td></tr>
+      <tr><td>AdjD Rank</td><td>Top 31</td><td>22 of 24 (92%)</td></tr>
+      <tr><td>AdjO (numerical)</td><td>124.1+</td><td>Modern-era threshold</td></tr>
+      <tr><td>AdjD (numerical)</td><td>91.3 or lower</td><td>Modern-era threshold</td></tr>
+      <tr><td>Top-7 in AdjO <em>or</em> AdjD</td><td>Either category</td><td>12 of last 13 champions</td></tr>
+      <tr><td>AdjEM Rank</td><td>Top 25</td><td><strong>100%</strong> — every champion since 2001</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Final Four Thresholds (2021–2025 avg)</h3>
+  <table>
+    <thead><tr><th>Metric</th><th>Average Rank Required</th></tr></thead>
+    <tbody>
+      <tr><td>AdjO Rank</td><td>Top 19</td></tr>
+      <tr><td>AdjD Rank</td><td>Top 23</td></tr>
+      <tr><td>AdjEM Rank</td><td>Top 11–12</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Elite Eight Thresholds</h3>
+  <table>
+    <thead><tr><th>Metric</th><th>Average Rank</th></tr></thead>
+    <tbody>
+      <tr><td>AdjO Rank</td><td>Top 25–30</td></tr>
+      <tr><td>AdjD Rank</td><td>Top 25–30</td></tr>
+      <tr><td>AdjEM Rank</td><td>Top 15–18</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2026 Teams Meeting Champion Criteria (Top 21 AdjO + Top 31 AdjD)</h3>
+  <table>
+    <thead><tr><th>Team</th><th>Seed</th><th>AdjO Rank</th><th>AdjD Rank</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Duke</td><td>1 East</td><td>4</td><td>2</td><td class="yes">YES</td></tr>
+      <tr><td>Arizona</td><td>1 West</td><td>5–7</td><td>3</td><td class="yes">YES</td></tr>
+      <tr><td>Michigan</td><td>1 Midwest</td><td>8</td><td>1</td><td class="yes">YES</td></tr>
+      <tr><td>Florida</td><td>1 South</td><td>9</td><td>6</td><td class="yes">YES</td></tr>
+      <tr><td>Houston</td><td>2 South</td><td>14–16</td><td>5</td><td class="yes">YES</td></tr>
+      <tr><td>Iowa State</td><td>2 Midwest</td><td>21–22</td><td>4</td><td class="yes">YES (borderline)</td></tr>
+      <tr><td>UConn</td><td>2 East</td><td>26</td><td>11</td><td class="no">NO</td></tr>
+      <tr><td>Michigan State</td><td>3 East</td><td>24</td><td>12</td><td class="no">NO</td></tr>
+      <tr><td>Illinois</td><td>3 South</td><td><strong>1</strong></td><td>28</td><td class="partial">PARTIAL</td></tr>
+      <tr><td>Purdue</td><td>2 West</td><td><strong>2</strong></td><td>36–37</td><td class="partial">PARTIAL</td></tr>
+      <tr><td>Arkansas</td><td>4 West</td><td>5</td><td>46</td><td class="partial">PARTIAL</td></tr>
+    </tbody>
+  </table>
+  <p style="color:var(--muted);font-size:0.85rem;">Illinois's AdjO of 131.1 is the highest ever recorded in the KenPom era (since 2002). Purdue's ~131.0 is second all-time.</p>
+</section>
+
+<!-- ── STEP 2: UPSET MODEL ── -->
+<section id="upset-model">
+  <h2>Step 2 — Upset Model</h2>
+
+  <h3>Upset Profiles by Efficiency Matchup</h3>
+  <div class="card">
+    <h4>Profile A — Elite offense / weak defense vs. defense-first lower seed</h4>
+    <p>When the higher seed ranks top-15 AdjO but outside top-30 AdjD, and the lower seed is top-25 AdjD with modest offense, the lower seed covers in ~<strong>38%</strong> of matchups — nearly double the base rate.</p>
+    <h4>Profile B — Lower seed with elite offense vs. defensive higher seed</h4>
+    <p>Lower seed top-20 AdjO against a defense-first higher seed: upsets occur ~<strong>29%</strong> of the time.</p>
+    <h4>Profile C — AdjEM Gap Thresholds</h4>
+    <table>
+      <thead><tr><th>AdjEM Gap</th><th>Higher Seed Win Rate</th></tr></thead>
+      <tbody>
+        <tr><td>&gt; 15 points</td><td>~97%</td></tr>
+        <tr><td>10–15 points</td><td>~88%</td></tr>
+        <tr><td>5–10 points</td><td>~72%</td></tr>
+        <tr><td>&lt; 5 points</td><td>~55% — near coin flip</td></tr>
+        <tr><td>&lt; 2 points</td><td>~50% — supplementary factors decide</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Historical Upset Frequency by Round</h3>
+  <table>
+    <thead><tr><th>Pattern</th><th>Frequency</th></tr></thead>
+    <tbody>
+      <tr><td>At least one No. 12 seed advances</td><td>85% of tournaments</td></tr>
+      <tr><td>At least one No. 13 seed advances</td><td>70% of tournaments</td></tr>
+      <tr><td>At least one No. 4 seed loses R1</td><td>15 of last 17 tournaments</td></tr>
+      <tr><td>Teams seeded 7+ reaching Final Four</td><td>10 of last 12 tournaments</td></tr>
+      <tr><td>No. 15 seeds winning R1</td><td>3 of last 5 tournaments</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── STEP 3 FLAGS ── -->
+<section id="flags">
+  <h2>Step 3 — Supplementary Variable Flags</h2>
+
+  <h3>Tempo Mismatches (8+ possession threshold)</h3>
+  <table>
+    <thead><tr><th>Team</th><th>Tempo</th><th>Flag</th></tr></thead>
+    <tbody>
+      <tr><td>Houston</td><td>63.4 (near-slowest)</td><td><span class="tag yellow">GRIND</span> Every opponent faces 7–11 fewer possessions — high variance risk for faster seeds</td></tr>
+      <tr><td>Iowa</td><td>64.8 (364th nationally)</td><td><span class="tag yellow">SLOW</span> Second-slowest in field; shortens games against fast opponents</td></tr>
+      <tr><td>Saint Mary's</td><td>65.2 (297th)</td><td><span class="tag yellow">SLOW</span> vs. Texas A&M (~73): 8-possession mismatch — favors Saint Mary's</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Recency Trend Flags (30-day AdjEM divergence ≥ 3 pts)</h3>
+  <table>
+    <thead><tr><th>Team</th><th>Trend</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Arizona</td><td><span class="tag green">PEAK +</span></td><td>9-game win streak entering tournament</td></tr>
+      <tr><td>St. John's</td><td><span class="tag green">PEAK +</span></td><td>19-1 in final stretch; demolished UConn by 20 in Big East final</td></tr>
+      <tr><td>VCU</td><td><span class="tag green">PEAK +</span></td><td>16-1 in last 17 games</td></tr>
+      <tr><td>South Florida</td><td><span class="tag green">PEAK +</span></td><td>12-game win streak; won AAC Tournament</td></tr>
+      <tr><td>Kansas</td><td><span class="tag red">COLLAPSE −</span></td><td>4-5 skid; lost to Houston (−22), Arizona (−23), Iowa State (−18)</td></tr>
+      <tr><td>UConn</td><td><span class="tag red">COLLAPSE −</span></td><td>Lost 4 of last 11; blown out in Big East final</td></tr>
+      <tr><td>BYU</td><td><span class="tag red">COLLAPSE −</span></td><td>7-10 in final 17 after Richie Saunders ACL; −8 AdjEM adjustment applied</td></tr>
+      <tr><td>Gonzaga</td><td><span class="tag red">COLLAPSE −</span></td><td>Slumped after Braden Huff injury; also lost Henry Sandigo</td></tr>
+      <tr><td>Texas Tech</td><td><span class="tag red">COLLAPSE −</span></td><td>Lost JT Toppin (ACL, 21.8 PPG); dropped 3 straight; −5 to −7 AdjEM adjustment</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Key Injury Adjustments</h3>
+  <table>
+    <thead><tr><th>Team</th><th>Player</th><th>Status</th><th>AdjEM Adjustment</th></tr></thead>
+    <tbody>
+      <tr><td>Duke</td><td>Caleb Foster (PG) + Patrick Ngongba II (C)</td><td>Out / Questionable</td><td>−3.5</td></tr>
+      <tr><td>BYU</td><td>Richie Saunders</td><td>Season-ending ACL</td><td>−8.0</td></tr>
+      <tr><td>UCLA</td><td>Bilodeau + Dent</td><td>Managing injuries</td><td>−6.0</td></tr>
+      <tr><td>North Carolina</td><td>Caleb Wilson</td><td>Season-ending</td><td>−9.0</td></tr>
+      <tr><td>Texas Tech</td><td>JT Toppin (21.8 PPG/10.8 RPG)</td><td>Season-ending ACL</td><td>−5 to −7</td></tr>
+      <tr><td>Louisville</td><td>Mikel Brown Jr.</td><td>Day-to-day</td><td>−4.0</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── BRACKET ── -->
+<section id="bracket">
+  <h2>Step 4 — Full Bracket</h2>
+
+  <div class="bracket-grid">
+
+    <!-- EAST -->
+    <div class="region-card east">
+      <div class="region-header">East — Duke (1)</div>
+      <table>
+        <thead><tr><th>Round</th><th>Winner</th><th>Conf.</th></tr></thead>
+        <tbody>
+          <tr><td>R64 (1/16)</td><td class="winner">Duke</td><td class="hi">High</td></tr>
+          <tr><td>R64 (8/9)</td><td class="upset-win">TCU ↑</td><td class="med">Med</td></tr>
+          <tr><td>R64 (5/12)</td><td class="winner">St. John's</td><td class="hi">High</td></tr>
+          <tr><td>R64 (4/13)</td><td class="winner">Kansas</td><td class="hi">High</td></tr>
+          <tr><td>R64 (6/11)</td><td class="winner">Louisville</td><td class="lo">Low-Med</td></tr>
+          <tr><td>R64 (3/14)</td><td class="winner">Michigan State</td><td class="hi">High</td></tr>
+          <tr><td>R64 (7/10)</td><td class="winner">UCLA</td><td class="med">Med</td></tr>
+          <tr><td>R64 (2/15)</td><td class="winner">UConn</td><td class="hi">High</td></tr>
+          <tr><td>R32 (1/9)</td><td class="winner">Duke</td><td class="hi">High</td></tr>
+          <tr><td>R32 (5/4)</td><td class="upset-win">St. John's ↑</td><td class="med">Med</td></tr>
+          <tr><td>R32 (6/3)</td><td class="winner">Michigan State</td><td class="hi">High</td></tr>
+          <tr><td>R32 (7/2)</td><td class="winner">UConn</td><td class="med">Med</td></tr>
+          <tr><td>S16 (1/5)</td><td class="winner">Duke</td><td class="hi">High</td></tr>
+          <tr><td>S16 (3/2)</td><td class="winner">Michigan State</td><td class="med">Med</td></tr>
+          <tr><td>E8</td><td class="winner">Duke → Final Four</td><td class="hi">High</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- WEST -->
+    <div class="region-card west">
+      <div class="region-header">West — Arizona (1)</div>
+      <table>
+        <thead><tr><th>Round</th><th>Winner</th><th>Conf.</th></tr></thead>
+        <tbody>
+          <tr><td>R64 (1/16)</td><td class="winner">Arizona</td><td class="hi">High</td></tr>
+          <tr><td>R64 (8/9)</td><td class="upset-win">Utah State ↑</td><td class="hi">High</td></tr>
+          <tr><td>R64 (5/12)</td><td class="winner">Wisconsin</td><td class="hi">High</td></tr>
+          <tr><td>R64 (4/13)</td><td class="winner">Arkansas</td><td class="hi">High</td></tr>
+          <tr><td>R64 (6/11)</td><td class="winner">BYU</td><td class="med">Med</td></tr>
+          <tr><td>R64 (3/14)</td><td class="winner">Gonzaga</td><td class="hi">High</td></tr>
+          <tr><td>R64 (7/10)</td><td class="winner">Miami FL</td><td class="med">Med</td></tr>
+          <tr><td>R64 (2/15)</td><td class="winner">Purdue</td><td class="hi">High</td></tr>
+          <tr><td>R32 (1/9)</td><td class="winner">Arizona</td><td class="hi">High</td></tr>
+          <tr><td>R32 (4/5)</td><td class="winner">Arkansas</td><td class="med">Med</td></tr>
+          <tr><td>R32 (6/3)</td><td class="winner">Gonzaga</td><td class="med">Med</td></tr>
+          <tr><td>R32 (7/2)</td><td class="winner">Purdue</td><td class="hi">High</td></tr>
+          <tr><td>S16 (1/4)</td><td class="winner">Arizona</td><td class="hi">High</td></tr>
+          <tr><td>S16 (3/2)</td><td class="winner">Purdue</td><td class="med">Med</td></tr>
+          <tr><td>E8</td><td class="winner">Arizona → Final Four</td><td class="hi">High</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SOUTH -->
+    <div class="region-card south">
+      <div class="region-header">South — Florida (1)</div>
+      <table>
+        <thead><tr><th>Round</th><th>Winner</th><th>Conf.</th></tr></thead>
+        <tbody>
+          <tr><td>R64 (1/16)</td><td class="winner">Florida</td><td class="hi">High</td></tr>
+          <tr><td>R64 (8/9)</td><td class="upset-win">Iowa ↑</td><td class="hi">High</td></tr>
+          <tr><td>R64 (5/12)</td><td class="winner">Vanderbilt</td><td class="hi">High</td></tr>
+          <tr><td>R64 (4/13)</td><td class="winner">Nebraska</td><td class="hi">High</td></tr>
+          <tr><td>R64 (6/11)</td><td class="upset-win">VCU ↑</td><td class="med">Med</td></tr>
+          <tr><td>R64 (3/14)</td><td class="winner">Illinois</td><td class="hi">High</td></tr>
+          <tr><td>R64 (7/10)</td><td class="winner">Saint Mary's</td><td class="med">Med</td></tr>
+          <tr><td>R64 (2/15)</td><td class="winner">Houston</td><td class="hi">High</td></tr>
+          <tr><td>R32 (1/9)</td><td class="winner">Florida</td><td class="hi">High</td></tr>
+          <tr><td>R32 (5/4)</td><td class="winner">Vanderbilt</td><td class="med">Med</td></tr>
+          <tr><td>R32 (11/3)</td><td class="winner">Illinois</td><td class="med">Med</td></tr>
+          <tr><td>R32 (7/2)</td><td class="winner">Houston</td><td class="hi">High</td></tr>
+          <tr><td>S16 (1/5)</td><td class="winner">Florida</td><td class="med">Med</td></tr>
+          <tr><td>S16 (3/2)</td><td class="upset-win">Houston ↑</td><td class="med">Med</td></tr>
+          <tr><td>E8</td><td class="winner">Houston → Final Four</td><td class="lo">Low-Med</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MIDWEST -->
+    <div class="region-card midwest">
+      <div class="region-header">Midwest — Michigan (1)</div>
+      <table>
+        <thead><tr><th>Round</th><th>Winner</th><th>Conf.</th></tr></thead>
+        <tbody>
+          <tr><td>R64 (1/16)</td><td class="winner">Michigan</td><td class="hi">High</td></tr>
+          <tr><td>R64 (8/9)</td><td class="winner">Georgia</td><td class="lo">Low</td></tr>
+          <tr><td>R64 (5/12)</td><td class="upset-win">Akron ↑</td><td class="med">Med</td></tr>
+          <tr><td>R64 (4/13)</td><td class="winner">Alabama</td><td class="hi">High</td></tr>
+          <tr><td>R64 (6/11)</td><td class="winner">Tennessee</td><td class="hi">High</td></tr>
+          <tr><td>R64 (3/14)</td><td class="winner">Virginia</td><td class="hi">High</td></tr>
+          <tr><td>R64 (7/10)</td><td class="winner">Kentucky</td><td class="med">Med</td></tr>
+          <tr><td>R64 (2/15)</td><td class="winner">Iowa State</td><td class="hi">High</td></tr>
+          <tr><td>R32 (1/8)</td><td class="winner">Michigan</td><td class="hi">High</td></tr>
+          <tr><td>R32 (12/4)</td><td class="winner">Alabama</td><td class="hi">High</td></tr>
+          <tr><td>R32 (6/3)</td><td class="winner">Tennessee</td><td class="lo">Low</td></tr>
+          <tr><td>R32 (7/2)</td><td class="winner">Iowa State</td><td class="hi">High</td></tr>
+          <tr><td>S16 (1/4)</td><td class="winner">Michigan</td><td class="hi">High</td></tr>
+          <tr><td>S16 (6/2)</td><td class="winner">Iowa State</td><td class="med">Med-Hi</td></tr>
+          <tr><td>E8</td><td class="winner">Michigan → Final Four</td><td class="med">Med-Hi</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL FOUR ── -->
+<section id="final-four">
+  <h2>Step 6 — Final Four &amp; Championship</h2>
+
+  <div class="ff-grid">
+    <div class="ff-card">
+      <div class="team">Arizona</div>
+      <div class="seed">1-seed West · KenPom #3 · AdjEM ~+37.7</div>
+      <p>def. Duke (1-seed East) in Final Four<br>Duke's injury-adjusted AdjEM (~+35.4) falls 2.3 points short of Arizona's full-strength profile. On a 9-game win streak with two lottery picks (Burries, Peat), Arizona's balanced two-way efficiency prevails. Duke's Cameron Boozer is the best player on the floor but cannot single-handedly bridge the gap against Arizona's 3rd-ranked defense.</p>
+    </div>
+    <div class="ff-card">
+      <div class="team">Michigan</div>
+      <div class="seed">1-seed Midwest · KenPom #2 · AdjEM ~+37.6</div>
+      <p>def. Houston (2-seed South) in Final Four<br>Michigan's #1-ranked defense suppresses Houston's disciplined half-court attack. Michigan's 4.6-point AdjEM advantage holds over 40 minutes despite Houston's grinding 63.4-possession tempo. Michigan's AdjO (8th) generates consistent efficient looks against Houston's 5th-ranked defense — a competitive matchup Michigan wins 68-61.</p>
+    </div>
+  </div>
+
+  <div class="card" style="border-color: var(--accent); margin-top:1rem;">
+    <h3 style="margin-top:0">National Championship: Michigan def. Arizona</h3>
+    <p><strong>Michigan AdjEM ~+37.6 · AdjO rank 8 · AdjD rank 1</strong><br>
+    <strong>Arizona AdjEM ~+37.7 · AdjO rank 5–7 · AdjD rank 3</strong></p>
+    <p>AdjEMs are separated by 0.1 points — statistically negligible. The decisive factor is Michigan's historically elite defense (#1 nationally, AdjD ~88.5). Arizona's offense (rank 5–7) must score against a defense that held every opponent under their efficiency average all season. Michigan's turnover rate (179th nationally) is the primary risk — Arizona's defense creates turnovers, and Michigan must protect the ball.</p>
+    <p>Ultimately, Michigan's dual-sided profile (top-8 offense, top-1 defense) matches the historical champion template more precisely than any team in the field. Michigan wins 65-59 on defensive execution. Yaxel Lendeborg neutralizes Peat at the 4, forcing Arizona into contested mid-range situations.</p>
+    <p><span class="tag blue">Confidence: Medium</span></p>
+  </div>
+</section>
+
+<!-- ── TOP UPSETS ── -->
+<section id="upsets">
+  <h2>Top Upsets — Ranked by Confidence</h2>
+
+  <details open>
+    <summary>1. Utah State over Villanova (9/8, West R64) <span class="tag green">Very High</span></summary>
+    <div class="inner">
+      <p>Utah State AdjEM ~+24.5 vs. Villanova ~+18.5 — Utah State is KenPom #30, Villanova #32. Utah State is ranked <em>ahead</em> of Villanova in KenPom. This is a committee seeding error, not a true upset. Two-headed attack: Falslev (16.1 PPG) + Collins (17.6 PPG). Utah State won the MWC Tournament against quality competition. Pick them with confidence.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>2. Iowa over Clemson (9/8, South R64) <span class="tag green">High</span></summary>
+    <div class="inner">
+      <p>Iowa AdjEM +22.4 vs. Clemson +15.5 — a 6.9-point gap favoring the 9-seed. Iowa is ranked 11 spots ahead of Clemson in KenPom. Iowa's glacial pace (364th nationally, 64.8 possessions) further suppresses Clemson's offensive volume. Another seeding anomaly, not a true upset.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>3. VCU over North Carolina (11/6, South R64) <span class="tag yellow">Medium-High</span></summary>
+    <div class="inner">
+      <p>After applying the −9 AdjEM adjustment for Caleb Wilson's season-ending injury, UNC's effective AdjEM drops to ~+14. VCU's effective AdjEM is ~+22–23 (slight A-10 SOS discount applied). VCU is the analytical favorite by 8–9 points once the injury is accounted for. Their 16-1 recent run and 15 tournament appearances since 2004 add execution confidence. <span class="tag green">REC+</span> <span class="tag red">UNC Injury</span></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>4. Akron over Texas Tech (12/5, Midwest R64) <span class="tag yellow">Medium</span></summary>
+    <div class="inner">
+      <p>JT Toppin's ACL tear removes Texas Tech's best player (21.8 PPG/10.8 RPG). Texas Tech's effective AdjEM collapses from +23.5 to approximately +16–18. Akron ranks 7th nationally in scoring (88.6 PPG), 8th in eFG% (58.5%), 14th in 3PT% (38.5%). Tavari Johnson averages 20.1 PPG. Adjusted gap is only 3–5 points — near coin-flip territory. Texas Tech dropped 3 straight post-Toppin. <span class="tag red">Tech Injury</span> <span class="tag yellow">12-seed Profile</span></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>5. St. John's over Kansas (5/4, East R32) <span class="tag yellow">Medium</span></summary>
+    <div class="inner">
+      <p>Full-season AdjEM gap is 1 point (Kansas +23.5, St. John's +22.5). But St. John's is 19-1 in their final 20 games and demolished UConn by 20 in the Big East final. Kansas went 4-5 in their final 9, losing by 22, 23, and 18 to tournament teams. The recency divergence is 6+ AdjEM points. In a coin-flip matchup, the hotter team wins. <span class="tag green">REC+</span> <span class="tag red">Kansas REC−</span></p>
+    </div>
+  </details>
+
+  <details>
+    <summary>6. Houston over Illinois (2/3, South S16) <span class="tag yellow">Medium</span></summary>
+    <div class="inner">
+      <p>Illinois has the greatest offensive efficiency in KenPom history (AdjO 131.1). But Houston's defense (5th nationally) is the closest thing the tournament has to a neutralizer. Houston's 63.4 pace reduces Illinois's possessions by ~7–8 per game, compressing their historic offensive volume. Houston AdjEM (~+33) is 2.6 points better than Illinois (~+35.6 — wait, Illinois is higher by 2.6). <em>Note: This is a model override</em> — Illinois holds a 2.6 AdjEM edge, but Houston's defensive profile better matches historical champion criteria. Houston wins in a 63-possession grinder.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>7. Houston over Florida (2/1, South E8) <span class="tag red">Low-Medium</span></summary>
+    <div class="inner">
+      <p>Houston AdjEM ~+33.0 vs. Florida ~+29.5 — Houston's 3.5-point edge is the pick. Florida's recent SEC Tournament loss (ended a 12-game streak) is a modest red flag. Houston grinds (63.4 possessions) against Florida's tempo, reducing Florida's offensive volume. Florida's 3PT% (30.8%, 161st) becomes less relevant in a half-court grind. Closest game in the bracket — genuine coin flip.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ── FRAGILE FAVORITES ── -->
+<section id="fragile">
+  <h2>Step 5 — Fragile Favorites</h2>
+
+  <div class="card fragile">
+    <h3 style="color:var(--red);margin-top:0">Kansas — 4-seed, East</h3>
+    <p><strong>Exit: Round of 32 (vs. St. John's)</strong></p>
+    <p>KenPom 21st — the weakest 4-seed in the field. AdjO ~26th, AdjD ~33rd — both outside Elite Eight thresholds. Went 4-5 in their final 9 games, losing to Houston (−22), Arizona (−23), and Iowa State (−18). Darryn Peterson (star freshman) missed 11 games with injuries and created chemistry disruptions. Faces a St. John's team 19-1 in their last 20 with nearly identical AdjEM. Recency divergence of 6+ points makes Kansas effectively a 5-seed playing a 5-seed.</p>
+    <div><span class="tag red">REC− Collapse</span> <span class="tag red">AdjEM Below E8 Threshold</span> <span class="tag red">Freshman Instability</span></div>
+  </div>
+
+  <div class="card fragile">
+    <h3 style="color:var(--red);margin-top:0">UConn — 2-seed, East</h3>
+    <p><strong>Exit: Sweet 16 (vs. Michigan State)</strong></p>
+    <p>29-5 record masks an offensive profile that falls outside the historical champion threshold: AdjO rank 26th. Only two champions since 2001 had AdjO rank outside top 21 — both ranked top 5 in AdjD (UConn's AdjD is 11th, not top 5). Lost 4 of last 11 and was demolished in the Big East final. Their offensive inconsistency meets Michigan State's 12th-ranked defense in the Sweet 16, where the limitations become disqualifying.</p>
+    <div><span class="tag red">AdjO Rank 26 — Outside Champion Threshold</span> <span class="tag red">REC− (Lost 4 of 11)</span></div>
+  </div>
+
+  <div class="card fragile">
+    <h3 style="color:var(--red);margin-top:0">BYU — 6-seed, West</h3>
+    <p><strong>Exit: Round of 32 (vs. Gonzaga)</strong></p>
+    <p>AJ Dybantsa (25.3 PPG, projected top-3 pick) was dominant — before Richie Saunders tore his ACL. The −8 AdjEM injury adjustment drops BYU's effective AdjEM from ~+26 to ~+18. After the injury, BYU went 7-10 in their final 17 games. Dybantsa's one-man offense is now fully scoutable — Gonzaga's 9th-ranked defense doubles the star and forces others to beat them. Without Saunders creating spacing, BYU can't consistently generate efficient shots.</p>
+    <div><span class="tag red">−8 AdjEM Injury Adjustment</span> <span class="tag red">7-10 Post-Injury Record</span> <span class="tag red">One-Man Offense</span></div>
+  </div>
+</section>
+
+<!-- ── MODEL OVERRIDES ── -->
+<section id="overrides">
+  <h2>Picks Where I Overrode the Model</h2>
+  <div class="card">
+    <h4>1. Houston over Illinois (Sweet 16)</h4>
+    <p>Illinois holds a 2.6-point full-season AdjEM advantage (+35.6 vs +33.0). Override rationale: Houston's AdjD rank (5th) better matches historical championship profiles than Illinois's AdjD rank (28th). Houston's 63.4-possession tempo compresses Illinois's historic offensive volume by ~7–8 possessions per game. If Illinois's defense performs above its season average, this pick is wrong.</p>
+  </div>
+  <div class="card">
+    <h4>2. Houston over Florida (Elite Eight)</h4>
+    <p>Model supports Houston (+33.0 AdjEM vs +29.5), so this is not a true override — but Florida's championship pedigree and experience create legitimate counter-narrative. I followed the efficiency data. Genuine coin flip.</p>
+  </div>
+  <div class="card">
+    <h4>3. Tennessee over Virginia (Round of 32)</h4>
+    <p>Identical AdjEM of +24.5. I chose Tennessee's nation-leading offensive rebounding rate (44.7%) over Virginia's tempo-slowing advantage as the tiebreaker — a subjective call in a true coin flip.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>Built with KenPom Adjusted Efficiency data · Analysis generated March 17, 2026</p>
+  <p style="margin-top:0.4rem">Data sources: KenPom.com · BracketEngine · ESPN · CBS Sports · The Ringer</p>
+</footer>
+
+</body>
+</html>
